@@ -348,7 +348,7 @@ int isGreater(int x, int y) {
   /* version 1.2 ops 4 */
   /**
    * first we expand x, y to 64 bits
-   * then compute x - 1 - y
+   * then compute res = x - 1 - y
    * if res >= 0, then return 1
    * else return 0 
   */
@@ -416,6 +416,7 @@ int satAdd(int x, int y) {
    * p_o & max will be max only if p_o equals 0xffffffff
    * that's when pos overflow occurs
   */
+  /* version 1.0 */
   // int min = 1 << 31;
   // int max = ~min;
   // int add = x + y;
@@ -425,9 +426,19 @@ int satAdd(int x, int y) {
   // res |= p_o & max;
   // res |= n_o & min;
   // return res;
-  int ans = x + y;
-	int overFlow = ((x ^ ans) & (y ^ ans)) >> 0x1f;
-	return (ans >> (overFlow & 0x1f)) + (overFlow << 0x1f);
+  /* verison 1.1 */
+  /**
+   * first we get add = x + y
+   * overFlow = 11...111 if overflow occurs
+   * 0x7fff ffff = 0111 ... 1111
+   * 0x8000 0000 = 1000 ... 0000
+   * if pos overflow , sign(add) = 1, add >> 31 + 1000 ... 0000 = 0x7fff ffff
+   * if neg overflow , sign(add) = 0, add >> 31 + 1000 ... 0000 = 0x8000 0000
+   * then it is solved
+  */
+  int add = x + y;
+	int overFlow = ((x ^ add) & (y ^ add)) >> 31;
+	return (add >> (overFlow & 31)) + (overFlow << 31);
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -464,31 +475,31 @@ int howManyBits(int x) {
   */
 
   /* version 1.0 ops 30 */
-  // int sign = x >> 31;
-  // int res = 0;
-  // // x = (x & ~sign) | (sign & ~x);
-  // x = x ^ sign;
-  // res = !!(x >> 16) << 4;
-  // res += !!(x >> (8 + res)) << 3;
-  // res += !!(x >> (4 + res)) << 2;
-  // res += !!(x >> (2 + res)) << 1;
-  // res += (x >> (1 + res));
-  // res += (x >> res);
-  // res += 1;
-  // return res;
+  int sign = x >> 31;
+  int res = 0;
+  // x = (x & ~sign) | (sign & ~x);
+  x = x ^ sign;
+  res = !!(x >> 16) << 4;
+  res += !!(x >> (8 + res)) << 3;
+  res += !!(x >> (4 + res)) << 2;
+  res += !!(x >> (2 + res)) << 1;
+  res += (x >> (1 + res));
+  res += (x >> res);
+  res += 1;
+  return res;
 
   /* version 1.1 ops 21 */
-  int global_4 = ~0x5B;
-  int ans;
-  long long y = x; // need 1 more op only using int
-  y = y ^ (y << 2);
-  ans = (!(y >> 17)) << 4;
-  ans ^= 25;
-  ans ^= (!(y >> ans)) << 3;
-  ans ^= 4;
-  ans ^= (!(y >> ans)) << 2;
-  ans += (global_4 >> ((y >> ans) & 30)) & 3;
-  return ans;
+  // int global_4 = ~0x5B;   //1111 1111 1111 1010 0100
+  // int ans;
+  // long long y = x;        // need 1 more op only using int
+  // y = y ^ (y << 2);                               // y = 1 ^ 1 << 2 = 1 ^ 100 = 101
+  // ans = (!(y >> 17)) << 4;                        // ans = 16 
+  // ans ^= 25;                                      // ans = 16 ^ 25 = 10000 ^ 11001 = 01001 = 9
+  // ans ^= (!(y >> ans)) << 3;                      // ans = 9 ^ 8 = 0001
+  // ans ^= 4;                                       // ans = 4 ^ 1 = 100 ^ 001 = 101 = 5
+  // ans ^= (!(y >> ans)) << 2;                      // ans = 5 ^ 4 = 101 ^ 100 = 001
+  // ans += (global_4 >> ((y >> ans) & 30)) & 3;     // ans = 1 + (1...0100 >> ((101 >> 1) & 30)) & 3 = 
+  // return ans;
 }
 /*
  * ilog2 - return floor(log base 2 of x), where x > 0
