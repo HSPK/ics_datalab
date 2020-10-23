@@ -380,7 +380,6 @@ int subOK(int x, int y) {
   */
   int sub = x + ~y + 1;
   return !(((x ^ y) & (x ^ sub)) >> 31);
-
   /* version 1.1 ops 4 */
   // long long a = x;
   // long long b = y;
